@@ -13,33 +13,29 @@ def configurar_driver():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-
-    # Caminho fixo para o geckodriver no container
     service = Service(executable_path="/usr/local/bin/geckodriver")
-    driver = webdriver.Firefox(service=service, options=options)
-    return driver
+    return webdriver.Firefox(service=service, options=options)
 
-def coletar_preco_mercadolivre(produto: str) -> dict:
+def coletar_preco_kabum(produto: str) -> dict:
     driver = configurar_driver()
-    driver.get(f"https://lista.mercadolivre.com.br/{produto.replace(' ', '-')}")
-    sleep(2)  # dá tempo pra página carregar
+    driver.get(f"https://www.kabum.com.br/busca/{produto.replace(' ', '%20')}")
+    sleep(2)  # Aguarda o carregamento
 
     try:
-        nome = driver.find_element(By.CSS_SELECTOR, "h2.ui-search-item__title").text
-        preco = driver.find_element(By.CSS_SELECTOR, ".andes-money-amount__fraction").text
-        preco = float(preco.replace('.', '').replace(',', '.'))
+        nome = driver.find_element(By.CSS_SELECTOR, ".sc-d79c9c3f-0").text
+        preco = driver.find_element(By.CSS_SELECTOR, ".sc-3b515ca1-2").text
+        preco = float(preco.replace('R$', '').replace('.', '').replace(',', '.').strip())
     except Exception as e:
         nome = "Produto não encontrado"
         preco = 0.0
-        print(f"Erro ao coletar dados: {e}")
+        print(f"Erro ao coletar dados do Kabum: {e}")
 
     driver.quit()
-
     return {
         "produto": produto,
         "nome": nome,
         "preco": preco,
-        "site": "Mercado Livre",
+        "site": "Kabum",
         "data": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
@@ -66,7 +62,7 @@ def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
 
 def main():
     produtos = ["monitor", "notebook"]
-    resultados = [coletar_preco_mercadolivre(produto) for produto in produtos]
+    resultados = [coletar_preco_kabum(produto) for produto in produtos]
     salvar_dados_xlsx(resultados)
     analisar_precos()
 
