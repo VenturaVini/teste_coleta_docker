@@ -71,3 +71,4 @@ if __name__ == "__main__":
     main()
     sleep(3)
     enviar_planilha_telegram("data/historico_precos.xlsx")
+    print(13)
