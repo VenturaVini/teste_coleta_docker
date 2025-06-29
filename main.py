@@ -16,33 +16,43 @@ def configurar_driver():
     service = Service(executable_path="/usr/local/bin/geckodriver")
     return webdriver.Firefox(service=service, options=options)
 
-def coletar_tabela_bc():
+def coletar_tabela_investing():
     driver = configurar_driver()
-    url = "https://www.bcb.gov.br/controleinflacao/historicocotacao"
+    url = "https://br.investing.com/currencies/exchange-rates-table"
     driver.get(url)
-    sleep(3)  # espera a página carregar
+    sleep(5)  # Aguarda carregamento
 
     try:
-        tabela = driver.find_element(By.CSS_SELECTOR, "table")  # primeira tabela da página
-        linhas = tabela.find_elements(By.TAG_NAME, "tr")
+        tabela = driver.find_element(By.ID, "exchange_rates_1")
+        linhas_elementos = tabela.find_elements(By.TAG_NAME, "tr")
+
         dados = []
-        for linha in linhas:
-            cols = linha.find_elements(By.TAG_NAME, "td")
-            if cols:
-                dados.append([col.text for col in cols])
+        for i, linha in enumerate(linhas_elementos):
+            colunas = linha.find_elements(By.TAG_NAME, "th" if i == 0 else "td")
+            dados.append([col.text.strip() for col in colunas])
+
     except Exception as e:
-        print(f"Erro ao coletar tabela: {e}")
+        print(f"❌ Erro ao coletar tabela: {e}")
         dados = []
+
     driver.quit()
 
-    df = pd.DataFrame(dados)
-    df['data_coleta'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if len(dados) < 2:
+        print("⚠️ Tabela não encontrada ou vazia.")
+        return pd.DataFrame()
+
+    # Primeira linha são os headers
+    headers = dados[0]
+    linhas = dados[1:]
+
+    df = pd.DataFrame(linhas, columns=headers)
+    df["data_coleta"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     caminho = "data/historico_precos.xlsx"
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    df.to_excel(caminho, index=False)  # **sobrescreve o arquivo toda vez**
+    df.to_excel(caminho, index=False)
 
-    print(f"Dados salvos em {caminho}")
+    print(f"📄 Dados salvos em {caminho}")
     return df
 
 def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
@@ -51,11 +61,12 @@ def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
         return
     df = pd.read_excel(caminho)
     print("\n📊 Análise de dados coletados:")
-    print(df.describe())
+    print(df.describe(include='all'))
 
 def main():
-    df = coletar_tabela_bc()
-    analisar_precos()
+    df = coletar_tabela_investing()
+    if not df.empty:
+        analisar_precos()
 
 if __name__ == "__main__":
     main()
