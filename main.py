@@ -38,37 +38,26 @@ def coletar_tabela_bc():
     df = pd.DataFrame(dados)
     df['data_coleta'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    caminho = "data/tabela_bc.xlsx"
+    caminho = "data/historico_precos.xlsx"
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    df.to_excel(caminho, index=False)
+    df.to_excel(caminho, index=False)  # **sobrescreve o arquivo toda vez**
 
     print(f"Dados salvos em {caminho}")
     return df
-
-def salvar_dados_xlsx(dados: pd.DataFrame, caminho: str = "data/historico_precos.xlsx"):
-    os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    if os.path.exists(caminho):
-        df_existente = pd.read_excel(caminho)
-        df_final = pd.concat([df_existente, dados], ignore_index=True)
-    else:
-        df_final = dados
-    df_final.to_excel(caminho, index=False)
 
 def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
     if not os.path.exists(caminho):
         print("Nenhum dado para analisar.")
         return
     df = pd.read_excel(caminho)
-    print("\n📊 Análise de preços:")
+    print("\n📊 Análise de dados coletados:")
     print(df.describe())
 
 def main():
     df = coletar_tabela_bc()
-    salvar_dados_xlsx(df)
     analisar_precos()
 
 if __name__ == "__main__":
     main()
     sleep(3)
     enviar_planilha_telegram("data/historico_precos.xlsx")
-    print(13)
