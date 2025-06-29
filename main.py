@@ -4,18 +4,17 @@ import pandas as pd
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-import chromedriver_autoinstaller
-from enviar_arquivo_telegram import enviar_planilha_telegram  # sua função externa
+from selenium.webdriver.firefox.options import Options
+from enviar_arquivo_telegram import enviar_planilha_telegram
 
 def configurar_driver():
-    chromedriver_autoinstaller.install()
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.binary_location = '/usr/bin/google-chrome'  # garante o caminho no container
-    return webdriver.Chrome(options=options)
+
+    driver = webdriver.Firefox(options=options)
+    return driver
 
 def coletar_preco_amazon(produto: str) -> dict:
     driver = configurar_driver()
