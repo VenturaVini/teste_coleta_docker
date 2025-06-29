@@ -16,54 +16,55 @@ def configurar_driver():
     service = Service(executable_path="/usr/local/bin/geckodriver")
     return webdriver.Firefox(service=service, options=options)
 
-def coletar_preco_kabum(produto: str) -> dict:
+def coletar_tabela_bc():
     driver = configurar_driver()
-    driver.get(f"https://www.kabum.com.br/busca/{produto.replace(' ', '%20')}")
-    sleep(2)  # Aguarda o carregamento
+    url = "https://www.bcb.gov.br/controleinflacao/historicocotacao"
+    driver.get(url)
+    sleep(3)  # espera a página carregar
 
     try:
-        nome = driver.find_element(By.CSS_SELECTOR, ".sc-d79c9c3f-0").text
-        preco = driver.find_element(By.CSS_SELECTOR, ".sc-3b515ca1-2").text
-        preco = float(preco.replace('R$', '').replace('.', '').replace(',', '.').strip())
+        tabela = driver.find_element(By.CSS_SELECTOR, "table")  # primeira tabela da página
+        linhas = tabela.find_elements(By.TAG_NAME, "tr")
+        dados = []
+        for linha in linhas:
+            cols = linha.find_elements(By.TAG_NAME, "td")
+            if cols:
+                dados.append([col.text for col in cols])
     except Exception as e:
-        nome = "Produto não encontrado"
-        preco = 0.0
-        print(f"Erro ao coletar dados do Kabum: {e}")
-
+        print(f"Erro ao coletar tabela: {e}")
+        dados = []
     driver.quit()
-    return {
-        "produto": produto,
-        "nome": nome,
-        "preco": preco,
-        "site": "Kabum",
-        "data": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
 
-def salvar_dados_xlsx(dados: list[dict], caminho: str = "data/historico_precos.xlsx"):
+    df = pd.DataFrame(dados)
+    df['data_coleta'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    caminho = "data/tabela_bc.xlsx"
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    df_novo = pd.DataFrame(dados)
+    df.to_excel(caminho, index=False)
 
+    print(f"Dados salvos em {caminho}")
+    return df
+
+def salvar_dados_xlsx(dados: pd.DataFrame, caminho: str = "data/historico_precos.xlsx"):
+    os.makedirs(os.path.dirname(caminho), exist_ok=True)
     if os.path.exists(caminho):
         df_existente = pd.read_excel(caminho)
-        df_final = pd.concat([df_existente, df_novo], ignore_index=True)
+        df_final = pd.concat([df_existente, dados], ignore_index=True)
     else:
-        df_final = df_novo
-
+        df_final = dados
     df_final.to_excel(caminho, index=False)
 
 def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
     if not os.path.exists(caminho):
         print("Nenhum dado para analisar.")
         return
-
     df = pd.read_excel(caminho)
     print("\n📊 Análise de preços:")
-    print(df.groupby("produto")["preco"].describe())
+    print(df.describe())
 
 def main():
-    produtos = ["monitor", "notebook"]
-    resultados = [coletar_preco_kabum(produto) for produto in produtos]
-    salvar_dados_xlsx(resultados)
+    df = coletar_tabela_bc()
+    salvar_dados_xlsx(df)
     analisar_precos()
 
 if __name__ == "__main__":
