@@ -5,6 +5,7 @@ from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
 from enviar_arquivo_telegram import enviar_planilha_telegram
 
 def configurar_driver():
@@ -13,7 +14,8 @@ def configurar_driver():
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
 
-    driver = webdriver.Firefox(options=options)
+    service = Service(executable_path="/usr/local/bin/geckodriver")  # caminho fixo
+    driver = webdriver.Firefox(service=service, options=options)
     return driver
 
 def coletar_preco_amazon(produto: str) -> dict:
