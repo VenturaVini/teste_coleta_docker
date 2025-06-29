@@ -1,0 +1,79 @@
+import os
+from time import sleep
+import pandas as pd
+from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+import chromedriver_autoinstaller
+from enviar_arquivo_telegram import enviar_planilha_telegram
+
+
+def configurar_driver():
+    chromedriver_autoinstaller.install()
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    return webdriver.Chrome(options=options)
+
+
+def coletar_preco_amazon(produto: str) -> dict:
+    driver = configurar_driver()
+    driver.get(f"https://www.amazon.com.br/s?k={produto}")
+
+    try:
+        nome = driver.find_element(By.CSS_SELECTOR, "h2 a span").text
+        preco = driver.find_element(By.CSS_SELECTOR, ".a-price-whole").text
+        preco = float(preco.replace('.', '').replace(',', '.'))
+    except Exception as e:
+        nome = "Produto não encontrado"
+        preco = 0.0
+        print(f"Erro ao coletar dados: {e}")
+
+    driver.quit()
+
+    return {
+        "produto": produto,
+        "nome": nome,
+        "preco": preco,
+        "site": "Amazon",
+        "data": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+
+
+def salvar_dados_xlsx(dados: list[dict], caminho: str = "data/historico_precos.xlsx"):
+    os.makedirs(os.path.dirname(caminho), exist_ok=True)
+    df_novo = pd.DataFrame(dados)
+
+    if os.path.exists(caminho):
+        df_existente = pd.read_excel(caminho)
+        df_final = pd.concat([df_existente, df_novo], ignore_index=True)
+    else:
+        df_final = df_novo
+
+    df_final.to_excel(caminho, index=False)
+
+
+def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
+    if not os.path.exists(caminho):
+        print("Nenhum dado para analisar.")
+        return
+
+    df = pd.read_excel(caminho)
+    print("\n📊 Análise de preços:")
+    print(df.groupby("produto")["preco"].describe())
+
+
+def main():
+    produtos = ["monitor", "notebook"]
+    resultados = [coletar_preco_amazon(produto) for produto in produtos]
+    salvar_dados_xlsx(resultados)
+    analisar_precos()
+
+
+if __name__ == "__main__":
+    main()
+    sleep(3)
+    enviar_planilha_telegram("data/historico_precos.xlsx")
+
