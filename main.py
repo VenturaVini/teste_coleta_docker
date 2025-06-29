@@ -6,8 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import chromedriver_autoinstaller
-from enviar_arquivo_telegram import enviar_planilha_telegram
-
+from enviar_arquivo_telegram import enviar_planilha_telegram  # sua função externa
 
 def configurar_driver():
     chromedriver_autoinstaller.install()
@@ -15,8 +14,8 @@ def configurar_driver():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+    options.binary_location = '/usr/bin/google-chrome'  # garante o caminho no container
     return webdriver.Chrome(options=options)
-
 
 def coletar_preco_amazon(produto: str) -> dict:
     driver = configurar_driver()
@@ -41,7 +40,6 @@ def coletar_preco_amazon(produto: str) -> dict:
         "data": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
-
 def salvar_dados_xlsx(dados: list[dict], caminho: str = "data/historico_precos.xlsx"):
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
     df_novo = pd.DataFrame(dados)
@@ -54,7 +52,6 @@ def salvar_dados_xlsx(dados: list[dict], caminho: str = "data/historico_precos.x
 
     df_final.to_excel(caminho, index=False)
 
-
 def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
     if not os.path.exists(caminho):
         print("Nenhum dado para analisar.")
@@ -64,16 +61,13 @@ def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
     print("\n📊 Análise de preços:")
     print(df.groupby("produto")["preco"].describe())
 
-
 def main():
     produtos = ["monitor", "notebook"]
     resultados = [coletar_preco_amazon(produto) for produto in produtos]
     salvar_dados_xlsx(resultados)
     analisar_precos()
 
-
 if __name__ == "__main__":
     main()
     sleep(3)
     enviar_planilha_telegram("data/historico_precos.xlsx")
-
