@@ -14,17 +14,19 @@ def configurar_driver():
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
 
-    service = Service(executable_path="/usr/local/bin/geckodriver")  # caminho fixo
+    # Caminho fixo para o geckodriver no container
+    service = Service(executable_path="/usr/local/bin/geckodriver")
     driver = webdriver.Firefox(service=service, options=options)
     return driver
 
-def coletar_preco_amazon(produto: str) -> dict:
+def coletar_preco_mercadolivre(produto: str) -> dict:
     driver = configurar_driver()
-    driver.get(f"https://www.amazon.com.br/s?k={produto}")
+    driver.get(f"https://lista.mercadolivre.com.br/{produto.replace(' ', '-')}")
+    sleep(2)  # dá tempo pra página carregar
 
     try:
-        nome = driver.find_element(By.CSS_SELECTOR, "h2 a span").text
-        preco = driver.find_element(By.CSS_SELECTOR, ".a-price-whole").text
+        nome = driver.find_element(By.CSS_SELECTOR, "h2.ui-search-item__title").text
+        preco = driver.find_element(By.CSS_SELECTOR, ".andes-money-amount__fraction").text
         preco = float(preco.replace('.', '').replace(',', '.'))
     except Exception as e:
         nome = "Produto não encontrado"
@@ -37,7 +39,7 @@ def coletar_preco_amazon(produto: str) -> dict:
         "produto": produto,
         "nome": nome,
         "preco": preco,
-        "site": "Amazon",
+        "site": "Mercado Livre",
         "data": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
@@ -64,7 +66,7 @@ def analisar_precos(caminho: str = "data/historico_precos.xlsx"):
 
 def main():
     produtos = ["monitor", "notebook"]
-    resultados = [coletar_preco_amazon(produto) for produto in produtos]
+    resultados = [coletar_preco_mercadolivre(produto) for produto in produtos]
     salvar_dados_xlsx(resultados)
     analisar_precos()
 
