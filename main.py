@@ -88,10 +88,14 @@ def gerar_planilha_convertida(moeda_destino: str, df_original: pd.DataFrame):
     df_convertido = df_original.copy()
     df_convertido["Total_Convertido"] = df_convertido["Total_Trimestre"] * taxa
 
-    nome_arquivo = f"data/planilha_final_trimestre_{moeda_destino.upper()}.xlsx"
+    # Arredonda a taxa para 2 casas e substitui ponto por "_" para não dar erro em nome de arquivo
+    taxa_str = str(round(taxa, 4)).replace('.', '_')
+    nome_arquivo = f"data/planilha_final_trimestre_{moeda_destino.upper()}_{taxa_str}.xlsx"
+
     df_convertido.to_excel(nome_arquivo, index=False)
     print(f"📁 Planilha convertida salva: {nome_arquivo}")
     return nome_arquivo
+
 
 # === EXECUÇÃO ===
 def main():
