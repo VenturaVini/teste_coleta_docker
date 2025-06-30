@@ -4,8 +4,8 @@ services:
   coletor:
     build: .
     container_name: coletor_precos
-    volumes:
-      - ./data:/app/data
+    # volumes:
+    #   - ./data:/app/data
     environment:
       - TELEGRAM_BOT_TOKEN=7729314755:AAEbqoHhyDyku2AMTkRycDDwfdVk8VhMhJA
       - TELEGRAM_CHAT_ID=5588207726
