@@ -90,7 +90,7 @@ def main():
     enviar_planilha_telegram("data/planilha_final_trimestre.xlsx")
 
     # exemplo com moeda USD
-    moeda = "JPY"
+    moeda = "EUR"
     caminho_convertido = gerar_planilha_convertida(moeda, df_trimestre)
     enviar_planilha_telegram(caminho_convertido)
 
