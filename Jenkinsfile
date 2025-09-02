@@ -1,11 +1,10 @@
 pipeline {
-    // Roda em qualquer agente disponível (no seu caso, container Jenkins com Docker)
     agent any
     
     environment {
-        IMAGE_NAME = "minha-automacao-python"  // Nome da imagem Docker
-        IMAGE_TAG = "${BUILD_NUMBER}"          // Tag usando número do build
-        OUTPUT_DIR = "output"                   // Pasta onde automação gera arquivos
+        IMAGE_NAME = "minha-automacao-python"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        OUTPUT_DIR = "output"
     }
     
     stages {
@@ -92,17 +91,48 @@ CMD ["python", "main.py"]
         
         stage('🚀 Executar Automação') {
             steps {
-                echo '🤖 Executando automação...'
                 script {
-                    // Cria output se não existir (para evitar erro no volume)
                     sh "mkdir -p ${OUTPUT_DIR}"
-                    
-                    sh """
-                        docker run --rm \\
-                            --name ${IMAGE_NAME}-executando \\
-                            -v \$(pwd)/${OUTPUT_DIR}:/app/${OUTPUT_DIR} \\
-                            ${IMAGE_NAME}:latest
-                    """
+                }
+                script {
+                    def envExists = fileExists('.env')
+                    if (envExists) {
+                        echo "🟢 .env encontrado no repositório. Usando variáveis do arquivo."
+                        sh '''
+                            set -a
+                            source .env
+                            set +a
+
+                            docker run --rm \\
+                                --name ${IMAGE_NAME}-executando \\
+                                -v $(pwd)/${OUTPUT_DIR}:/app/${OUTPUT_DIR} \\
+                                ${IMAGE_NAME}:latest
+                        '''
+                    } else {
+                        try {
+                            withCredentials([file(credentialsId: 'myproject-env-file', variable: 'ENV_FILE')]) {
+                                echo "🟡 .env não encontrado no repo. Usando Secret File do Jenkins."
+                                sh '''
+                                    set -a
+                                    source $ENV_FILE
+                                    set +a
+
+                                    docker run --rm \\
+                                        --name ${IMAGE_NAME}-executando \\
+                                        -v $(pwd)/${OUTPUT_DIR}:/app/${OUTPUT_DIR} \\
+                                        ${IMAGE_NAME}:latest
+                                '''
+                            }
+                        } catch (err) {
+                            echo "⚠️ Nenhum .env encontrado e Secret File não configurado. Rodando sem variáveis extras."
+                            sh """
+                                docker run --rm \\
+                                    --name ${IMAGE_NAME}-executando \\
+                                    -v \$(pwd)/${OUTPUT_DIR}:/app/${OUTPUT_DIR} \\
+                                    ${IMAGE_NAME}:latest
+                            """
+                        }
+                    }
                 }
             }
         }
@@ -124,8 +154,6 @@ CMD ["python", "main.py"]
             sh """
                 docker images ${IMAGE_NAME} --format "{{.Tag}}" | grep -v latest | tail -n +3 | xargs -r -I {} docker rmi ${IMAGE_NAME}:{} || true
             """
-            // Opcional para liberar mais espaço, cuidado se tiver containers ativos:
-            // sh "docker system prune -f || true"
         }
         
         success {
